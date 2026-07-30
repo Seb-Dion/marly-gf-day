@@ -1,113 +1,191 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import confetti from 'canvas-confetti'
-import BoxArt from './BoxArt.jsx'
-import { RARITY, drawCollectible } from './collectibles.js'
-import CollectionGrid from './CollectionGrid.jsx'
-import { useCollection } from '../../hooks/useCollection.js'
+import boxImg from './sonny_angel-removebg-preview.png'
+import { RARITY, drawPick } from './collectibles.js'
 import styles from './BlindBox.module.css'
 
+const HOLD_MS = 1500
+const RING_R = 168
+const RING_C = 2 * Math.PI * RING_R
+
 const RARITY_CONFETTI = {
-  common: { particleCount: 30, spread: 55, colors: ['#83d3f5', '#ff8fb9'] },
-  rare: { particleCount: 70, spread: 75, colors: ['#ff6aa5', '#5bc0ea', '#ffffff'] },
-  legendary: { particleCount: 160, spread: 110, colors: ['#ffcd5c', '#ff6aa5', '#83d3f5'] },
+  common: { particleCount: 60, spread: 70, colors: ['#ffcbe0', '#ff82b2', '#ffffff'] },
+  rare: { particleCount: 110, spread: 90, colors: ['#ff82b2', '#f75c96', '#ffe6f0', '#ffffff'] },
+  legendary: {
+    particleCount: 200,
+    spread: 120,
+    colors: ['#8a1f45', '#df3d78', '#ff82b2', '#ffcbe0', '#ffffff'],
+  },
 }
 
 export default function BlindBox() {
-  const [phase, setPhase] = useState('idle') // idle | shaking | revealed
+  // idle → charging → bursting → revealed
+  const [phase, setPhase] = useState('idle')
+  const [charge, setCharge] = useState(0)
   const [result, setResult] = useState(null)
-  const { collected, addToCollection } = useCollection()
 
-  function openBox() {
-    if (phase !== 'idle') return
-    setPhase('shaking')
-    window.setTimeout(() => {
-      const item = drawCollectible()
-      setResult(item)
-      setPhase('revealed')
-      addToCollection(item.id)
+  const rafRef = useRef(0)
+  const timersRef = useRef([])
+  const phaseRef = useRef(phase)
+  phaseRef.current = phase
 
-      const conf = RARITY_CONFETTI[item.rarity]
-      confetti({ ...conf, origin: { y: 0.55 } })
-      if (item.rarity === 'legendary') {
-        window.setTimeout(() => confetti({ ...conf, origin: { y: 0.45, x: 0.3 } }), 200)
-        window.setTimeout(() => confetti({ ...conf, origin: { y: 0.45, x: 0.7 } }), 350)
+  const clearTimers = useCallback(() => {
+    cancelAnimationFrame(rafRef.current)
+    timersRef.current.forEach(clearTimeout)
+    timersRef.current = []
+  }, [])
+
+  useEffect(() => clearTimers, [clearTimers])
+
+  const later = useCallback((fn, ms) => {
+    timersRef.current.push(setTimeout(fn, ms))
+  }, [])
+
+  const burst = useCallback(() => {
+    cancelAnimationFrame(rafRef.current)
+    setCharge(1)
+    setPhase('bursting')
+
+    const pick = drawPick()
+    const conf = RARITY_CONFETTI[pick.rarity]
+
+    // box pops first, then the shower, then the card
+    later(() => {
+      confetti({ ...conf, origin: { y: 0.45 }, startVelocity: 42, scalar: 1.1 })
+      if (pick.rarity === 'legendary') {
+        later(() => confetti({ ...conf, origin: { y: 0.4, x: 0.28 }, angle: 60 }), 180)
+        later(() => confetti({ ...conf, origin: { y: 0.4, x: 0.72 }, angle: 120 }), 330)
       }
-    }, 650)
-  }
+    }, 180)
 
-  function openAnother() {
+    later(() => {
+      setResult(pick)
+      setPhase('revealed')
+    }, 800)
+  }, [later])
+
+  const startHold = useCallback(() => {
+    if (phaseRef.current !== 'idle') return
+    setPhase('charging')
+    const start = performance.now()
+    const tick = (now) => {
+      const p = Math.min(1, (now - start) / HOLD_MS)
+      setCharge(p)
+      if (p >= 1) burst()
+      else rafRef.current = requestAnimationFrame(tick)
+    }
+    rafRef.current = requestAnimationFrame(tick)
+  }, [burst])
+
+  const cancelHold = useCallback(() => {
+    if (phaseRef.current !== 'charging') return
+    cancelAnimationFrame(rafRef.current)
+    setPhase('idle')
+    setCharge(0)
+  }, [])
+
+  function reset() {
+    clearTimers()
     setResult(null)
+    setCharge(0)
     setPhase('idle')
   }
 
+  const charging = phase === 'charging'
+  const bursting = phase === 'bursting'
+  const showBox = phase !== 'revealed'
+
   return (
-    <section className="section" id="blind-box">
-      <div className="container">
-        <span className="section-eyebrow">The main event</span>
-        <h2 className="section-title">Open your blind box</h2>
-        <p className="section-subtitle">
-          Nine collectibles, three rarity tiers. Some are common, some are rare, and one is
-          legendary. Keep opening to collect them all.
-        </p>
+    <section className={styles.section} id="blind-box">
+      <div className={styles.stage}>
+        <AnimatePresence mode="wait">
+          {showBox ? (
+            <motion.div
+              key="box"
+              className={styles.boxZone}
+              exit={{ opacity: 0, transition: { duration: 0.18 } }}
+            >
+              <div className={styles.boxHolder}>
+                <svg className={styles.ring} viewBox="0 0 360 360" aria-hidden="true">
+                  <circle className={styles.ringTrack} cx="180" cy="180" r={RING_R} />
+                  <circle
+                    className={styles.ringFill}
+                    cx="180" cy="180" r={RING_R}
+                    strokeDasharray={RING_C}
+                    strokeDashoffset={RING_C * (1 - charge)}
+                    style={{ opacity: charge > 0 ? 1 : 0 }}
+                  />
+                </svg>
 
-        <div className={styles.stage}>
-          <AnimatePresence mode="wait">
-            {phase !== 'revealed' ? (
-              <motion.button
-                key="box"
-                type="button"
-                className={styles.boxButton}
-                onClick={openBox}
-                disabled={phase === 'shaking'}
-                animate={
-                  phase === 'shaking'
-                    ? { rotate: [0, -8, 8, -7, 7, -4, 4, 0], x: [0, -4, 4, -3, 3, 0] }
-                    : { y: [0, -8, 0] }
-                }
-                transition={
-                  phase === 'shaking'
-                    ? { duration: 0.65, ease: 'easeInOut' }
-                    : { duration: 2.4, repeat: Infinity, ease: 'easeInOut' }
-                }
-                whileHover={phase === 'idle' ? { scale: 1.04 } : undefined}
-                exit={{ scale: 0.6, opacity: 0, transition: { duration: 0.25 } }}
-              >
-                <BoxArt className={styles.boxArt} />
-                <span className={styles.boxPrompt}>
-                  {phase === 'shaking' ? 'Opening…' : 'Tap to open'}
-                </span>
-              </motion.button>
-            ) : (
-              <motion.div
-                key="reveal"
-                className={`${styles.revealCard} ${styles[result.rarity]}`}
-                initial={{ scale: 0.4, opacity: 0, y: 40 }}
-                animate={{ scale: 1, opacity: 1, y: 0 }}
-                transition={{ type: 'spring', stiffness: 260, damping: 18 }}
-              >
-                <span className={styles.rarityBadge}>{RARITY[result.rarity].label}</span>
-                <result.icon className={styles.revealIcon} />
-                <p className={styles.revealPhrase}>&ldquo;{result.phrase}&rdquo;</p>
-              </motion.div>
-            )}
-          </AnimatePresence>
+                <div
+                  className={styles.glow}
+                  style={{ opacity: charge * 0.8, transform: `scale(${0.65 + charge * 0.6})` }}
+                  aria-hidden="true"
+                />
 
-          {phase === 'revealed' && (
-            <motion.button
-              type="button"
-              className="pink-btn"
-              onClick={openAnother}
+                {bursting && <span className={styles.rays} aria-hidden="true" />}
+                {bursting && <span className={styles.flash} aria-hidden="true" />}
+
+                <button
+                  type="button"
+                  className={`${styles.boxButton} ${charging ? styles.charging : ''} ${
+                    bursting ? styles.bursting : ''
+                  }`}
+                  style={{ '--amp': charge * 8, '--charge': charge }}
+                  onPointerDown={startHold}
+                  onPointerUp={cancelHold}
+                  onPointerLeave={cancelHold}
+                  onPointerCancel={cancelHold}
+                  onContextMenu={(e) => e.preventDefault()}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      startHold()
+                    }
+                  }}
+                  onKeyUp={cancelHold}
+                  disabled={bursting}
+                  aria-label="hold to open your blind box"
+                >
+                  <img src={boxImg} alt="" className={styles.boxImg} draggable="false" />
+                </button>
+              </div>
+
+              <span className={`${styles.prompt} ${charging ? styles.promptActive : ''}`}>
+                {bursting ? '✨' : charging ? 'keep holding…' : 'hold to open'}
+              </span>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="reveal"
+              className={styles.revealZone}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ delay: 0.3 }}
             >
-              Open another
-            </motion.button>
-          )}
-        </div>
+              <motion.div
+                className={`${styles.card} ${styles[result.rarity]}`}
+                initial={{ scale: 0.3, opacity: 0, y: 30, rotate: -6 }}
+                animate={{ scale: 1, opacity: 1, y: 0, rotate: 0 }}
+                transition={{ type: 'spring', stiffness: 220, damping: 16 }}
+              >
+                <img src={result.src} alt="" className={styles.cardPhoto} />
+                <span className={styles.badge}>{RARITY[result.rarity].label}</span>
+              </motion.div>
 
-        <CollectionGrid collected={collected} />
+              <motion.button
+                type="button"
+                className={styles.again}
+                onClick={reset}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.45 }}
+              >
+                open another
+              </motion.button>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </section>
   )

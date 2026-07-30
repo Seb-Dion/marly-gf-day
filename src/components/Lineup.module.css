@@ -1,0 +1,66 @@
+.section {
+  padding: 8px 0 56px;
+}
+
+.grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 26px 20px;
+}
+
+.item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  transform: rotate(var(--tilt, 0deg));
+  transition: transform 0.2s ease;
+}
+
+.item:hover {
+  transform: rotate(0deg) translateY(-4px);
+}
+
+.photo {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  border: 4px solid var(--white);
+  box-shadow: var(--shadow-soft);
+  background: var(--pink-50);
+}
+
+.rarity {
+  /* keep the pill level while the photo above it stays tilted */
+  transform: rotate(calc(var(--tilt, 0deg) * -1));
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  padding: 5px 15px;
+  border-radius: 999px;
+  color: var(--pink-700);
+  background: var(--pink-100);
+}
+
+.rare {
+  color: var(--white);
+  background: var(--pink-500);
+}
+
+.legendary {
+  color: var(--white);
+  background: linear-gradient(135deg, var(--pink-800), var(--pink-600));
+  box-shadow: 0 0 0 4px rgba(138, 31, 69, 0.14);
+}
+
+@media (max-width: 720px) {
+  .grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 22px 14px;
+  }
+}

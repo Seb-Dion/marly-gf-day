@@ -1,8 +1,12 @@
 # marly-gf-day 💗
 
 A little website made for Marly, for National Girlfriend's Day (August 1st).
-Built with React + Vite. Features a photo gallery and a "blind box"
-gacha-style opener with 9 personalized collectibles across 3 rarity tiers.
+Built with React + Vite.
+
+The page is one thing: a Sonny Angel blind box you **hold** to open. Holding
+charges a ring, the box shakes harder as it fills, then bursts and reveals one
+of 6 photos — weighted across common / rare / legendary. All 6 possible pulls
+and their rarities are shown in the lineup below the box.
 
 ## Developing
 
@@ -11,15 +15,22 @@ npm install
 npm run dev
 ```
 
-## Adding real photos
+## The photos
 
-Drop files into `public/photos/` using the filenames listed in
-`public/photos/README.md`. Placeholders show automatically until then.
+`src/assets/picks/pick-1..6.jpg` are web-optimized (max 1400px, ~250 KB each).
+The full-size originals live in `originals/`, which is gitignored.
 
-## Writing your note
+To swap or reweight a pull, edit `src/components/BlindBox/collectibles.js` —
+each entry is `{ id, src, rarity }`, and rarity drives the draw weight
+(common 10, rare 5, legendary 3). Current odds: commons ~23% each, rares ~12%
+each, legendary ~7%.
 
-Edit the placeholder paragraph in `src/components/Note.jsx` before sharing
-the site.
+Regenerate an optimized copy with:
+
+```sh
+sips --resampleHeightWidthMax 1400 -s format jpeg -s formatOptions 78 \
+  originals/YOUR.jpg --out src/assets/picks/pick-N.jpg
+```
 
 ## Deploying
 
