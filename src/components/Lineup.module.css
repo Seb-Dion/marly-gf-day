@@ -58,6 +58,29 @@
   box-shadow: 0 0 0 4px rgba(138, 31, 69, 0.14);
 }
 
+.mythical {
+  color: var(--white);
+  background: linear-gradient(135deg, #b8860b, #f0c85a, #b8860b);
+  box-shadow: 0 0 0 4px rgba(184, 134, 11, 0.18);
+}
+
+.mystery {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-md);
+  border: 4px solid var(--white);
+  box-shadow: var(--shadow-soft);
+  background:
+    linear-gradient(135deg, rgba(240, 200, 90, 0.35), transparent 60%),
+    var(--pink-50);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 2.4rem;
+  color: var(--pink-300);
+}
+
 @media (max-width: 720px) {
   .grid {
     grid-template-columns: repeat(2, 1fr);

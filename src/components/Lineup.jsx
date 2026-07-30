@@ -8,7 +8,13 @@ export default function Lineup() {
         <ul className={styles.grid}>
           {PICKS.map((pick, i) => (
             <li key={pick.id} className={styles.item} style={{ '--tilt': i % 2 === 0 ? '-1.5deg' : '1.5deg' }}>
-              <img src={pick.src} alt="" className={styles.photo} loading="lazy" />
+              {pick.rarity === 'mythical' ? (
+                <div className={styles.mystery} aria-label="mystery collectible, not yet revealed">
+                  <span>?</span>
+                </div>
+              ) : (
+                <img src={pick.src} alt="" className={styles.photo} loading="lazy" />
+              )}
               <span className={`${styles.rarity} ${styles[pick.rarity]}`}>
                 {RARITY[pick.rarity].label}
               </span>

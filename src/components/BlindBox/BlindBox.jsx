@@ -2,12 +2,21 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import confetti from 'canvas-confetti'
 import boxImg from './sonny_angel-removebg-preview.png'
-import { RARITY, drawPick } from './collectibles.js'
+import { RARITY, RARITY_ORDER, drawPick } from './collectibles.js'
 import styles from './BlindBox.module.css'
 
 const HOLD_MS = 1500
 const RING_R = 168
 const RING_C = 2 * Math.PI * RING_R
+const COLLECTION_KEY = 'blindbox:collected-rarities'
+
+function loadCollected() {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(COLLECTION_KEY)) || [])
+  } catch {
+    return new Set()
+  }
+}
 
 const RARITY_CONFETTI = {
   common: { particleCount: 60, spread: 70, colors: ['#ffcbe0', '#ff82b2', '#ffffff'] },
@@ -17,6 +26,12 @@ const RARITY_CONFETTI = {
     spread: 120,
     colors: ['#8a1f45', '#df3d78', '#ff82b2', '#ffcbe0', '#ffffff'],
   },
+  mythical: {
+    particleCount: 280,
+    spread: 140,
+    colors: ['#b8860b', '#f0c85a', '#ff82b2', '#df3d78', '#ffffff'],
+    scalar: 1.25,
+  },
 }
 
 export default function BlindBox() {
@@ -24,6 +39,7 @@ export default function BlindBox() {
   const [phase, setPhase] = useState('idle')
   const [charge, setCharge] = useState(0)
   const [result, setResult] = useState(null)
+  const [collected, setCollected] = useState(loadCollected)
 
   const rafRef = useRef(0)
   const timersRef = useRef([])
@@ -57,11 +73,24 @@ export default function BlindBox() {
         later(() => confetti({ ...conf, origin: { y: 0.4, x: 0.28 }, angle: 60 }), 180)
         later(() => confetti({ ...conf, origin: { y: 0.4, x: 0.72 }, angle: 120 }), 330)
       }
+      if (pick.rarity === 'mythical') {
+        later(() => confetti({ ...conf, origin: { y: 0.4, x: 0.22 }, angle: 60, startVelocity: 55 }), 160)
+        later(() => confetti({ ...conf, origin: { y: 0.4, x: 0.78 }, angle: 120, startVelocity: 55 }), 300)
+        later(() => confetti({ ...conf, origin: { y: 0.1 }, angle: 270, spread: 160, startVelocity: 35 }), 460)
+        later(() => confetti({ ...conf, origin: { y: 0.45 }, startVelocity: 60, scalar: 1.35 }), 620)
+      }
     }, 180)
 
     later(() => {
       setResult(pick)
       setPhase('revealed')
+      setCollected((prev) => {
+        if (prev.has(pick.rarity)) return prev
+        const next = new Set(prev)
+        next.add(pick.rarity)
+        localStorage.setItem(COLLECTION_KEY, JSON.stringify([...next]))
+        return next
+      })
     }, 800)
   }, [later])
 
@@ -186,6 +215,18 @@ export default function BlindBox() {
             </motion.div>
           )}
         </AnimatePresence>
+      </div>
+
+      <div className={styles.tracker} aria-label="rarities collected so far">
+        {RARITY_ORDER.map((key) => (
+          <span
+            key={key}
+            className={`${styles.pip} ${collected.has(key) ? styles.pipCollected : ''}`}
+            data-rarity={key}
+          >
+            {RARITY[key].label}
+          </span>
+        ))}
       </div>
     </section>
   )
