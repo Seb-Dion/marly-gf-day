@@ -43,6 +43,7 @@ export default function BlindBox() {
 
   const rafRef = useRef(0)
   const timersRef = useRef([])
+  const finaleRef = useRef(false)
   const phaseRef = useRef(phase)
   phaseRef.current = phase
 
@@ -89,6 +90,7 @@ export default function BlindBox() {
         const next = new Set(prev)
         next.add(pick.rarity)
         localStorage.setItem(COLLECTION_KEY, JSON.stringify([...next]))
+        if (next.size === RARITY_ORDER.length) finaleRef.current = true
         return next
       })
     }, 800)
@@ -113,6 +115,15 @@ export default function BlindBox() {
     setPhase('idle')
     setCharge(0)
   }, [])
+
+  useEffect(() => {
+    if (!finaleRef.current) return
+    finaleRef.current = false
+    const colors = ['#b8860b', '#f0c85a', '#ff82b2', '#df3d78', '#8a1f45', '#ffffff']
+    later(() => confetti({ colors, particleCount: 160, spread: 100, origin: { y: 0.5, x: 0.12 }, angle: 60, startVelocity: 55 }), 500)
+    later(() => confetti({ colors, particleCount: 160, spread: 100, origin: { y: 0.5, x: 0.88 }, angle: 120, startVelocity: 55 }), 650)
+    later(() => confetti({ colors, particleCount: 240, spread: 160, origin: { y: 0.25 }, startVelocity: 45, scalar: 1.3 }), 900)
+  }, [collected, later])
 
   function reset() {
     clearTimers()
@@ -216,6 +227,12 @@ export default function BlindBox() {
           )}
         </AnimatePresence>
       </div>
+
+      {collected.size === RARITY_ORDER.length && (
+        <div className={styles.trophyRow}>
+          <span className={styles.trophy}>full collection!</span>
+        </div>
+      )}
 
       <div className={styles.tracker} aria-label="rarities collected so far">
         {RARITY_ORDER.map((key) => (
